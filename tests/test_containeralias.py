@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import unittest
 
 from swift.common.swob import Request
@@ -41,6 +42,22 @@ class FakeApp(object):
 
     def __call__(self, env, start_response):
         start_response('200 OK', self.headers)
+        
+        path = env.get('PATH_INFO')
+        if path == '/v1/AUTH_.auth/account1/.services':
+            return json.dumps({'storage': {
+                'cluster_name': 'http://localhost/v1/AUTH_123'}})
+        return []
+
+class FakeBadApp(object):
+    def __init__(self, headers=None):
+        if headers:
+            self.headers = headers
+        else:
+            self.headers = {}
+
+    def __call__(self, env, start_response):
+        start_response('200 OK', self.headers)
         return []
 
 
@@ -51,7 +68,7 @@ def start_response(*args):
 class TestContainerAlias(unittest.TestCase):
 
     def test_redirect(self):
-        app = containeralias.ContainerAliasMiddleware(FakeApp())
+        app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
         cache = FakeCache({
             'container/a/c': {'meta': {'storage-path': '/v1/a2/c2'}},
         })
@@ -75,7 +92,7 @@ class TestContainerAlias(unittest.TestCase):
         self.assertEquals(res.status_int, 200)
 
     def test_container_post(self):
-        app = containeralias.ContainerAliasMiddleware(FakeApp())
+        app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
         cache = FakeCache()
 
         req = Request.blank('/v1/a/c',
@@ -88,7 +105,7 @@ class TestContainerAlias(unittest.TestCase):
         self.assertEquals(res.status_int, 200)
 
         cache = FakeCache({'container/a/c': {'object_count': '1'}})
-        app = containeralias.ContainerAliasMiddleware(FakeApp())
+        app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
         req = Request.blank('/v1/a/c',
                             environ={'REQUEST_METHOD': 'POST',
                                      'HTTP_X_CONTAINER_META_STORAGE_PATH': 'a',
@@ -99,7 +116,7 @@ class TestContainerAlias(unittest.TestCase):
         self.assertEquals(res.status_int, 400)
 
     def test_container_delete(self):
-        app = containeralias.ContainerAliasMiddleware(FakeApp())
+        app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
         cache = FakeCache({
             'container/a/c': {'meta': {'storage-path': '/v1/a2/c2'}},
         })
@@ -121,7 +138,7 @@ class TestContainerAlias(unittest.TestCase):
         self.assertEquals(res.status_int, 200)
 
     def test_container_head(self):
-        app = containeralias.ContainerAliasMiddleware(FakeApp())
+        app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
         cache = FakeCache({
             'container/a/c': {'meta': {'storage-path': '/v1/a2/c2'}},
         })
@@ -132,6 +149,20 @@ class TestContainerAlias(unittest.TestCase):
                                      })
         res = req.get_response(app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
+        self.assertEquals(res.status_int, 200)
+
+    def test_container_post_acl(self):
+        conf = {'auth_method': 'swauth'}
+        app = containeralias.ContainerAliasMiddleware(FakeApp(), conf)
+        cache = FakeCache()
+
+        req = Request.blank('/v1/AUTH_test/container',
+                            environ={'REQUEST_METHOD': 'POST',
+                                     'HTTP_X_CONTAINER_READ': 'account1,account2:user',
+                                     'REMOTE_USER': 'account:user,account',
+                                     'swift.cache': cache,
+                                     })
+        res = req.get_response(app)
         self.assertEquals(res.status_int, 200)
 
 
