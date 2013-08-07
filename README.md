@@ -74,7 +74,7 @@ Quick Install
     [filter:containeralias]
     use = egg:containeralias#containeralias
     auth_method = swauth
-    prefix = SHARED_
+    #prefix = SHARED_
     #reseller_prefix = AUTH 
 
 3) Alter your proxy-server.conf pipeline and add containeralias after your

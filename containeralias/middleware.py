@@ -19,6 +19,9 @@
 container given by the ``x-container-meta-storage-path`` container metadata
 entry. The target container can also reside within another account.
 
+Additionally this middleware creates an alias container for every
+cross-account ACL set.
+
 The ``containeralias`` middleware should be added to the pipeline in your
 ``/etc/swift/proxy-server.conf`` file.
 For example::
@@ -28,6 +31,9 @@ pipeline = catch_errors cache tempauth containeralias proxy-server
 
 [filter:containeralias]
 use = egg:containeralias#containeralias
+auth_method = swauth
+#prefix = SHARED_
+#reseller_prefix = AUTH 
 
 """
 
