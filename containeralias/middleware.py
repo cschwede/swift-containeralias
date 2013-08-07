@@ -96,16 +96,16 @@ class ContainerAliasMiddleware(object):
             return self.app(environ, start_response)
 
         if container and not objname:
-            container_info = get_container_info(request.environ, self.app)
             if request.method in ('DELETE', 'HEAD'):
                 return self.app
 
             if request.method == 'POST':
                 # Deny setting if there are any objects in base container
                 # Otherwise these objects won't be visible
-                objects = container_info.get('object_count')
-                if objects and int(objects) > 0:
-                    if request.headers.get('X-Container-Meta-Storage-Path'):
+                if request.headers.get('X-Container-Meta-Storage-Path'):
+                    container_info = get_container_info(request.environ, self.app)
+                    objects = container_info.get('object_count')
+                    if objects and int(objects) > 0:
                         return HTTPBadRequest()
 
                 # ACL set
