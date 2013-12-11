@@ -44,50 +44,35 @@ class FakeApp(object):
         
         return []
 
-class FakeBadApp(object):
-    def __init__(self, headers=None):
-        if headers:
-            self.headers = headers
-        else:
-            self.headers = {}
-
-    def __call__(self, env, start_response):
-        start_response('200 OK', self.headers)
-        return []
-
-
-def start_response(*args):
-    pass
-
 
 class TestContainerAlias(unittest.TestCase):
-
-    def test_redirect(self):
-        app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
-        cache = FakeCache({
+    def setUp(self, *_args, **_kwargs):
+        self.app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
+        self.cache = FakeCache({
             'container/a/c': {'meta': {'storage-path': '/v1/a2/c2'}},
         })
 
+    def test_get_container(self):
         req = Request.blank('/v1/a/c',
                             environ={'REQUEST_METHOD': 'GET',
-                                     'swift.cache': cache,
+                                     'swift.cache': self.cache,
                                      })
-        res = req.get_response(app)
+        res = req.get_response(self.app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a2/c2')
         self.assertEquals(res.environ['RAW_PATH_INFO'], '/v1/a2/c2')
         self.assertEquals(res.status_int, 200)
 
+    def test_get_object(self):
         req = Request.blank('/v1/a/c/o',
                             environ={'REQUEST_METHOD': 'GET',
-                                     'swift.cache': cache,
+                                     'swift.cache': self.cache,
                                      })
-        res = req.get_response(app)
+        res = req.get_response(self.app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a2/c2/o')
         self.assertEquals(res.environ['RAW_PATH_INFO'], '/v1/a2/c2/o')
         self.assertEquals(res.status_int, 200)
 
-    def test_container_post(self):
-        app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
+    def test_set_alias_empty_container(self):
         cache = FakeCache()
 
         req = Request.blank('/v1/a/c',
@@ -95,55 +80,55 @@ class TestContainerAlias(unittest.TestCase):
                                      'HTTP_X_CONTAINER_META_STORAGE_PATH': 'a',
                                      'swift.cache': cache,
                                      })
-        res = req.get_response(app)
+        res = req.get_response(self.app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
         self.assertEquals(res.status_int, 200)
 
+    def test_set_alias_container_with_object(self):
         cache = FakeCache({'container/a/c': {'object_count': '1'}})
-        app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
         req = Request.blank('/v1/a/c',
                             environ={'REQUEST_METHOD': 'POST',
                                      'HTTP_X_CONTAINER_META_STORAGE_PATH': 'a',
                                      'swift.cache': cache,
                                      })
-        res = req.get_response(app)
+        res = req.get_response(self.app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
         self.assertEquals(res.status_int, 400)
 
-    def test_container_delete(self):
-        app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
-        cache = FakeCache({
-            'container/a/c': {'meta': {'storage-path': '/v1/a2/c2'}},
-        })
-
+    def test_delete_container(self):
         req = Request.blank('/v1/a/c',
                             environ={'REQUEST_METHOD': 'DELETE',
-                                     'swift.cache': cache,
+                                     'swift.cache': self.cache,
                                      })
-        res = req.get_response(app)
+        res = req.get_response(self.app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
         self.assertEquals(res.status_int, 200)
 
+    def test_delete_object(self):
         req = Request.blank('/v1/a/c/o',
                             environ={'REQUEST_METHOD': 'DELETE',
-                                     'swift.cache': cache,
+                                     'swift.cache': self.cache,
                                      })
-        res = req.get_response(app)
+        res = req.get_response(self.app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a2/c2/o')
         self.assertEquals(res.status_int, 200)
 
-    def test_container_head(self):
-        app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
-        cache = FakeCache({
-            'container/a/c': {'meta': {'storage-path': '/v1/a2/c2'}},
-        })
-
+    def test_head_container(self):
         req = Request.blank('/v1/a/c',
                             environ={'REQUEST_METHOD': 'HEAD',
-                                     'swift.cache': cache,
+                                     'swift.cache': self.cache,
                                      })
-        res = req.get_response(app)
+        res = req.get_response(self.app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
+        self.assertEquals(res.status_int, 200)
+
+    def test_head_object(self):
+        req = Request.blank('/v1/a/c/o',
+                            environ={'REQUEST_METHOD': 'HEAD',
+                                     'swift.cache': self.cache,
+                                     })
+        res = req.get_response(self.app)
+        self.assertEquals(res.environ['PATH_INFO'], '/v1/a2/c2/o')
         self.assertEquals(res.status_int, 200)
 
 
