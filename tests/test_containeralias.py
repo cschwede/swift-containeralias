@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import unittest
 
 from swift.common.swob import Request
@@ -43,10 +42,6 @@ class FakeApp(object):
     def __call__(self, env, start_response):
         start_response('200 OK', self.headers)
         
-        path = env.get('PATH_INFO')
-        if path == '/v1/AUTH_.auth/account1/.services':
-            return json.dumps({'storage': {
-                'cluster_name': 'http://localhost/v1/AUTH_123'}})
         return []
 
 class FakeBadApp(object):
@@ -149,20 +144,6 @@ class TestContainerAlias(unittest.TestCase):
                                      })
         res = req.get_response(app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
-        self.assertEquals(res.status_int, 200)
-
-    def test_container_post_acl(self):
-        conf = {'auth_method': 'swauth'}
-        app = containeralias.ContainerAliasMiddleware(FakeApp(), conf)
-        cache = FakeCache()
-
-        req = Request.blank('/v1/AUTH_test/container',
-                            environ={'REQUEST_METHOD': 'POST',
-                                     'HTTP_X_CONTAINER_READ': 'account1,account2:user',
-                                     'REMOTE_USER': 'account:user,account',
-                                     'swift.cache': cache,
-                                     })
-        res = req.get_response(app)
         self.assertEquals(res.status_int, 200)
 
 
