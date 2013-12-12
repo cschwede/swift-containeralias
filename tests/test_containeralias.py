@@ -51,7 +51,7 @@ class TestContainerAlias(unittest.TestCase):
     def setUp(self, *_args, **_kwargs):
         self.app = alias.AliasMiddleware(FakeApp(), {})
         self.cache = FakeCache({
-            'container/a/c': {'meta': {'alias': 'a2/c2'}},
+            'container/a/c': {'meta': {'alias': '/a2/c2'}},
         })
 
     def test_get_container(self):
@@ -61,7 +61,6 @@ class TestContainerAlias(unittest.TestCase):
                                      })
         res = req.get_response(self.app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a2/c2')
-#        self.assertEquals(res.environ['RAW_PATH_INFO'], '/v1/a2/c2')
         self.assertEquals(res.status_int, 200)
 
     def test_get_object(self):
@@ -71,10 +70,21 @@ class TestContainerAlias(unittest.TestCase):
                                      })
         res = req.get_response(self.app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a2/c2/o')
-#        self.assertEquals(res.environ['RAW_PATH_INFO'], '/v1/a2/c2/o')
         self.assertEquals(res.status_int, 200)
 
     def test_set_alias_empty_container(self):
+        cache = FakeCache()
+
+        req = Request.blank('/v1/a/c',
+                            environ={'REQUEST_METHOD': 'POST',
+                                     'HTTP_X_CONTAINER_META_ALIAS': '/a/c',
+                                     'swift.cache': cache,
+                                     })
+        res = req.get_response(self.app)
+        self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
+        self.assertEquals(res.status_int, 200)
+
+    def test_set_invalid_alias_empty_container(self):
         cache = FakeCache()
 
         req = Request.blank('/v1/a/c',
@@ -84,13 +94,31 @@ class TestContainerAlias(unittest.TestCase):
                                      })
         res = req.get_response(self.app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
-        self.assertEquals(res.status_int, 200)
+        self.assertEquals(res.status_int, 400)
+
+        req = Request.blank('/v1/a/c',
+                            environ={'REQUEST_METHOD': 'POST',
+                                     'HTTP_X_CONTAINER_META_ALIAS': 'a/c/o',
+                                     'swift.cache': cache,
+                                     })
+        res = req.get_response(self.app)
+        self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
+        self.assertEquals(res.status_int, 400)
+
+        req = Request.blank('/v1/a/c',
+                            environ={'REQUEST_METHOD': 'POST',
+                                     'HTTP_X_CONTAINER_META_ALIAS': 'a',
+                                     'swift.cache': cache,
+                                     })
+        res = req.get_response(self.app)
+        self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
+        self.assertEquals(res.status_int, 400)
 
     def test_set_alias_container_with_object(self):
         cache = FakeCache({'container/a/c': {'object_count': '1'}})
         req = Request.blank('/v1/a/c',
                             environ={'REQUEST_METHOD': 'POST',
-                                     'HTTP_X_CONTAINER_META_ALIAS': 'a/c',
+                                     'HTTP_X_CONTAINER_META_ALIAS': '/a/c',
                                      'swift.cache': cache,
                                      })
         res = req.get_response(self.app)
@@ -100,7 +128,7 @@ class TestContainerAlias(unittest.TestCase):
     def test_set_alias_container_alias_loop(self):
         req = Request.blank('/v1/a/c2',
                             environ={'REQUEST_METHOD': 'POST',
-                                     'HTTP_X_CONTAINER_META_ALIAS': 'a/c',
+                                     'HTTP_X_CONTAINER_META_ALIAS': '/a/c',
                                      'swift.cache': self.cache,
                                      })
         res = req.get_response(self.app)
@@ -155,11 +183,10 @@ class TestObjectAlias(unittest.TestCase):
                                      'swift.cache': self.cache,
                                      'swift.object/a/c/o': {
                                         'meta': {
-                                            'alias': 'a2/c2/o2'}},
+                                            'alias': '/a2/c2/o2'}},
                                      })
         res = req.get_response(self.app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a2/c2/o2')
-#        self.assertEquals(res.environ['RAW_PATH_INFO'], '/v1/a2/c2/o2')
         self.assertEquals(res.status_int, 200)
 
     def test_delete_object(self):
@@ -168,7 +195,7 @@ class TestObjectAlias(unittest.TestCase):
                                      'swift.cache': self.cache,
                                      'swift.object/a/c/o': {
                                         'meta': {
-                                            'alias': 'a2/c2/o2'}},
+                                            'alias': '/a2/c2/o2'}},
                                      })
         res = req.get_response(self.app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c/o')
@@ -180,7 +207,7 @@ class TestObjectAlias(unittest.TestCase):
                                      'swift.cache': self.cache,
                                      'swift.object/a/c/o': {
                                         'meta': {
-                                            'alias': 'a2/c2/o2'}},
+                                            'alias': '/a2/c2/o2'}},
                                      })
         res = req.get_response(self.app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c/o')

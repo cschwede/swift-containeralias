@@ -64,7 +64,13 @@ class AliasMiddleware(object):
                     # Otherwise these objects won't be visible
                     new_container_alias = request.headers.get(
                         'X-Container-Meta-Alias')
+
                     if new_container_alias:
+                        try:
+                            (acc, cont) = split_path(new_container_alias, 2, 2, False)
+                        except ValueError:
+                            return HTTPBadRequest()
+
                         container_info = get_container_info(
                             request.environ, self.app)
                         objects = container_info.get('object_count')
@@ -74,7 +80,7 @@ class AliasMiddleware(object):
                         # make sure there is no alias on the target container
                         # otherwise loops could be created
                         old_path_info = request.environ['PATH_INFO']
-                        request.environ['PATH_INFO'] = '/%s/%s' % (
+                        request.environ['PATH_INFO'] = '/%s%s' % (
                             version, new_container_alias)
                         container_info = get_container_info(
                             request.environ, self.app)
@@ -90,7 +96,7 @@ class AliasMiddleware(object):
             if container_alias:
                 if object_name:
                     container_alias += '/' + object_name
-                request.environ['PATH_INFO'] = '/%s/%s' % (version, container_alias)
+                request.environ['PATH_INFO'] = '/%s%s' % (version, container_alias)
 
             if object_name:
                 # DELETE+HEAD will access original object, not object alias points to
@@ -100,7 +106,7 @@ class AliasMiddleware(object):
                 object_info = get_object_info(request.environ, self.app)
                 object_alias = object_info.get('meta', {}).get('alias')
                 if object_alias:
-                    request.environ['PATH_INFO'] = '/%s/%s' % (version, object_alias)
+                    request.environ['PATH_INFO'] = '/%s%s' % (version, object_alias)
 
         return self.app
 
