@@ -104,6 +104,17 @@ class AliasMiddleware(object):
                     return self.app
 
                 object_info = get_object_info(request.environ, self.app)
+
+                if request.method == 'POST':
+                    new_object_alias = request.headers.get('X-Object-Meta-Alias')
+                    if new_object_alias:
+                        try:
+                            (acc, cont, obj) = split_path(new_object_alias, 3, 3, False)
+                        except ValueError:
+                            return HTTPBadRequest()
+                        if object_info.get('length', 0) > 0:
+                            return HTTPBadRequest()
+
                 object_alias = object_info.get('meta', {}).get('alias')
                 if object_alias:
                     request.environ['PATH_INFO'] = '/%s%s' % (version, object_alias)

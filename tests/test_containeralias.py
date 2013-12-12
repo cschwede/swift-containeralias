@@ -177,6 +177,24 @@ class TestObjectAlias(unittest.TestCase):
         self.app = alias.AliasMiddleware(FakeApp(), {})
         self.cache = FakeCache()
 
+    def test_set_alias_non_empty_object(self):
+        req = Request.blank('/v1/a/c/o',
+                            environ={'REQUEST_METHOD': 'POST',
+                                     'HTTP_X_OBJECT_META_ALIAS': '/a/c/o',
+                                     'swift.object/a/c/o': {'length': 1},
+                                     })
+        res = req.get_response(self.app)
+        self.assertEquals(res.status_int, 400)
+
+    def test_set_alias_invalid_target_object(self):
+        for alias in ['/a/c/', '/a/c', '/a/', '/a', '/']:
+            req = Request.blank('/v1/a/c/o',
+                                environ={'REQUEST_METHOD': 'POST',
+                                         'HTTP_X_OBJECT_META_ALIAS': alias,
+                                         })
+            res = req.get_response(self.app)
+            self.assertEquals(res.status_int, 400)
+
     def test_get_object(self):
         req = Request.blank('/v1/a/c/o',
                             environ={'REQUEST_METHOD': 'GET',
