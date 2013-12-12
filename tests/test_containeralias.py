@@ -85,34 +85,13 @@ class TestContainerAlias(unittest.TestCase):
         self.assertEquals(res.status_int, 200)
 
     def test_set_invalid_alias_empty_container(self):
-        cache = FakeCache()
-
-        req = Request.blank('/v1/a/c',
-                            environ={'REQUEST_METHOD': 'POST',
-                                     'HTTP_X_CONTAINER_META_ALIAS': 'a/c',
-                                     'swift.cache': cache,
-                                     })
-        res = req.get_response(self.app)
-        self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
-        self.assertEquals(res.status_int, 400)
-
-        req = Request.blank('/v1/a/c',
-                            environ={'REQUEST_METHOD': 'POST',
-                                     'HTTP_X_CONTAINER_META_ALIAS': 'a/c/o',
-                                     'swift.cache': cache,
-                                     })
-        res = req.get_response(self.app)
-        self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
-        self.assertEquals(res.status_int, 400)
-
-        req = Request.blank('/v1/a/c',
-                            environ={'REQUEST_METHOD': 'POST',
-                                     'HTTP_X_CONTAINER_META_ALIAS': 'a',
-                                     'swift.cache': cache,
-                                     })
-        res = req.get_response(self.app)
-        self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
-        self.assertEquals(res.status_int, 400)
+        for alias in ['/a/c/o', '/a/', '/a', '/', 'a', 'a/c', 'a/c/o']:
+            req = Request.blank('/v1/a/c',
+                                environ={'REQUEST_METHOD': 'POST',
+                                         'HTTP_X_CONTAINER_META_ALIAS': alias,
+                                         })
+            res = req.get_response(self.app)
+            self.assertEquals(res.status_int, 400)
 
     def test_set_alias_container_with_object(self):
         cache = FakeCache({'container/a/c': {'object_count': '1'}})
