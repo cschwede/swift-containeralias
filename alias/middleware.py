@@ -15,19 +15,19 @@
 
 
 """
-``containeralias`` is a middleware which redirects requests to a different
-container given by the ``x-container-meta-storage-path`` container metadata
-entry. The target container can also reside within another account.
+``alias`` is a middleware which redirects requests to a different
+container or object given by the ``x-(container|object)-meta-alias``
+metadata entry. The target can also reside within another account.
 
-The ``containeralias`` middleware should be added to the pipeline in your
+The ``alias`` middleware should be added to the pipeline in your
 ``/etc/swift/proxy-server.conf`` file.
 For example::
 
 [pipeline:main]
-pipeline = catch_errors cache tempauth containeralias proxy-server
+pipeline = catch_errors cache tempauth alias proxy-server
 
-[filter:containeralias]
-use = egg:containeralias#containeralias
+[filter:alias]
+use = egg:alias#alias
 
 """
 
@@ -36,8 +36,8 @@ from swift.common.utils import split_path
 from swift.proxy.controllers.base import get_container_info, get_object_info
 
 
-class ContainerAliasMiddleware(object):
-    """ Containeralias middleware
+class AliasMiddleware(object):
+    """ Alias middleware
 
     See above for a full description.
 
@@ -63,7 +63,7 @@ class ContainerAliasMiddleware(object):
                 if request.method == 'POST':
                     # Deny setting if there are any objects in base container
                     # Otherwise these objects won't be visible
-                    if request.headers.get('X-Container-Meta-Storage-Path'):
+                    if request.headers.get('X-Container-Meta-Alias'):
                         container_info = get_container_info(request.environ, self.app)
                         objects = container_info.get('object_count')
                         if objects and int(objects) > 0:
@@ -71,12 +71,12 @@ class ContainerAliasMiddleware(object):
 
             container_info = get_container_info(request.environ, self.app)
             meta = container_info.get('meta', {})
-            storage_path = meta.get('storage-path')
-            if storage_path:
+            alias = meta.get('alias')
+            if alias:
                 if objname:
-                    storage_path += '/' + objname
-                request.environ['PATH_INFO'] = storage_path
-                request.environ['RAW_PATH_INFO'] = storage_path
+                    alias += '/' + objname
+                request.environ['PATH_INFO'] = alias
+                request.environ['RAW_PATH_INFO'] = alias
 
             if objname:
                 # DELETE+HEAD will access original object, not object alias points to
@@ -85,10 +85,10 @@ class ContainerAliasMiddleware(object):
 
                 object_info = get_object_info(request.environ, self.app)
                 meta = object_info.get('meta', {})
-                object_storage_path = meta.get('storage-path')
-                if object_storage_path:
-                    request.environ['PATH_INFO'] = object_storage_path
-                    request.environ['RAW_PATH_INFO'] = object_storage_path
+                object_alias = meta.get('alias')
+                if object_alias:
+                    request.environ['PATH_INFO'] = object_alias
+                    request.environ['RAW_PATH_INFO'] = object_alias
 
         return self.app
 
@@ -97,6 +97,6 @@ def filter_factory(global_conf, **local_conf):
     """Returns a WSGI filter app for use with paste.deploy."""
     conf = global_conf.copy()
     conf.update(local_conf)
-    def containeralias_filter(app):
-        return ContainerAliasMiddleware(app, conf)
-    return containeralias_filter
+    def alias_filter(app):
+        return AliasMiddleware(app, conf)
+    return alias_filter

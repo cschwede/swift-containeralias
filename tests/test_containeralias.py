@@ -15,7 +15,7 @@ import unittest
 
 from swift.common.swob import Request
 
-from containeralias import middleware as containeralias
+from alias import middleware as alias
 
 
 class FakeCache(object):
@@ -47,9 +47,9 @@ class FakeApp(object):
 
 class TestContainerAlias(unittest.TestCase):
     def setUp(self, *_args, **_kwargs):
-        self.app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
+        self.app = alias.AliasMiddleware(FakeApp(), {})
         self.cache = FakeCache({
-            'container/a/c': {'meta': {'storage-path': '/v1/a2/c2'}},
+            'container/a/c': {'meta': {'alias': '/v1/a2/c2'}},
         })
 
     def test_get_container(self):
@@ -77,7 +77,7 @@ class TestContainerAlias(unittest.TestCase):
 
         req = Request.blank('/v1/a/c',
                             environ={'REQUEST_METHOD': 'POST',
-                                     'HTTP_X_CONTAINER_META_STORAGE_PATH': 'a',
+                                     'HTTP_X_CONTAINER_META_ALIAS': 'a',
                                      'swift.cache': cache,
                                      })
         res = req.get_response(self.app)
@@ -88,7 +88,7 @@ class TestContainerAlias(unittest.TestCase):
         cache = FakeCache({'container/a/c': {'object_count': '1'}})
         req = Request.blank('/v1/a/c',
                             environ={'REQUEST_METHOD': 'POST',
-                                     'HTTP_X_CONTAINER_META_STORAGE_PATH': 'a',
+                                     'HTTP_X_CONTAINER_META_ALIAS': 'a',
                                      'swift.cache': cache,
                                      })
         res = req.get_response(self.app)
@@ -134,7 +134,7 @@ class TestContainerAlias(unittest.TestCase):
 
 class TestObjectAlias(unittest.TestCase):
     def setUp(self, *_args, **_kwargs):
-        self.app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
+        self.app = alias.AliasMiddleware(FakeApp(), {})
         self.cache = FakeCache()
 
     def test_get_object(self):
@@ -143,7 +143,7 @@ class TestObjectAlias(unittest.TestCase):
                                      'swift.cache': self.cache,
                                      'swift.object/a/c/o': {
                                         'meta': {
-                                            'storage-path': '/v1/a2/c2/o2'}},
+                                            'alias': '/v1/a2/c2/o2'}},
                                      })
         res = req.get_response(self.app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a2/c2/o2')
@@ -156,7 +156,7 @@ class TestObjectAlias(unittest.TestCase):
                                      'swift.cache': self.cache,
                                      'swift.object/a/c/o': {
                                         'meta': {
-                                            'storage-path': '/v1/a2/c2/o2'}},
+                                            'alias': '/v1/a2/c2/o2'}},
                                      })
         res = req.get_response(self.app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c/o')
@@ -168,7 +168,7 @@ class TestObjectAlias(unittest.TestCase):
                                      'swift.cache': self.cache,
                                      'swift.object/a/c/o': {
                                         'meta': {
-                                            'storage-path': '/v1/a2/c2/o2'}},
+                                            'alias': '/v1/a2/c2/o2'}},
                                      })
         res = req.get_response(self.app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c/o')
