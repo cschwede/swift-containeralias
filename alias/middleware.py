@@ -49,13 +49,13 @@ class AliasMiddleware(object):
     @wsgify
     def __call__(self, request):
         try:
-            (version, account, container, objname) = split_path(
+            (version, account, container, object_name) = split_path(
                                   request.path_info, 1, 4, True)
         except ValueError:
             return self.app(environ, start_response)
 
         if container:
-            if not objname:
+            if not object_name:
                 # DELETE+HEAD to container itself, not the alias
                 if request.method in ('DELETE', 'HEAD'):
                     return self.app
@@ -70,22 +70,20 @@ class AliasMiddleware(object):
                             return HTTPBadRequest()
 
             container_info = get_container_info(request.environ, self.app)
-            meta = container_info.get('meta', {})
-            alias = meta.get('alias')
-            if alias:
-                if objname:
-                    alias += '/' + objname
-                request.environ['PATH_INFO'] = alias
-                request.environ['RAW_PATH_INFO'] = alias
+            container_alias = container_info.get('meta', {}).get('alias')
+            if container_alias:
+                if object_name:
+                    container_alias += '/' + object_name
+                request.environ['PATH_INFO'] = container_alias
+                request.environ['RAW_PATH_INFO'] = container_alias
 
-            if objname:
+            if object_name:
                 # DELETE+HEAD will access original object, not object alias points to
                 if request.method in ('DELETE', 'HEAD'):
                     return self.app
 
                 object_info = get_object_info(request.environ, self.app)
-                meta = object_info.get('meta', {})
-                object_alias = meta.get('alias')
+                object_alias = object_info.get('meta', {}).get('alias')
                 if object_alias:
                     request.environ['PATH_INFO'] = object_alias
                     request.environ['RAW_PATH_INFO'] = object_alias
