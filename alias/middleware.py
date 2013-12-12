@@ -54,8 +54,7 @@ class AliasMiddleware(object):
         except ValueError:
             return self.app(environ, start_response)
 
-        if container:
-            if not object_name:
+        if container and not object_name:
                 # DELETE+HEAD to container itself, not the alias
                 if request.method in ('DELETE', 'HEAD'):
                     return self.app
@@ -63,19 +62,35 @@ class AliasMiddleware(object):
                 if request.method == 'POST':
                     # Deny setting if there are any objects in base container
                     # Otherwise these objects won't be visible
-                    if request.headers.get('X-Container-Meta-Alias'):
-                        container_info = get_container_info(request.environ, self.app)
+                    new_container_alias = request.headers.get(
+                        'X-Container-Meta-Alias')
+                    if new_container_alias:
+                        container_info = get_container_info(
+                            request.environ, self.app)
                         objects = container_info.get('object_count')
                         if objects and int(objects) > 0:
                             return HTTPBadRequest()
 
+                        # make sure there is no alias on the target container
+                        # otherwise loops could be created
+                        old_path_info = request.environ['PATH_INFO']
+                        request.environ['PATH_INFO'] = '/%s/%s' % (
+                            version, new_container_alias)
+                        container_info = get_container_info(
+                            request.environ, self.app)
+                        container_alias = container_info.get(
+                            'meta', {}).get('alias')
+                        request.environ['PATH_INFO'] = old_path_info
+                        if container_alias:
+                            return HTTPBadRequest()
+
+        if container:
             container_info = get_container_info(request.environ, self.app)
             container_alias = container_info.get('meta', {}).get('alias')
             if container_alias:
                 if object_name:
                     container_alias += '/' + object_name
-                request.environ['PATH_INFO'] = container_alias
-                request.environ['RAW_PATH_INFO'] = container_alias
+                request.environ['PATH_INFO'] = '/%s/%s' % (version, container_alias)
 
             if object_name:
                 # DELETE+HEAD will access original object, not object alias points to
@@ -85,8 +100,7 @@ class AliasMiddleware(object):
                 object_info = get_object_info(request.environ, self.app)
                 object_alias = object_info.get('meta', {}).get('alias')
                 if object_alias:
-                    request.environ['PATH_INFO'] = object_alias
-                    request.environ['RAW_PATH_INFO'] = object_alias
+                    request.environ['PATH_INFO'] = '/%s/%s' % (version, object_alias)
 
         return self.app
 
