@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 __author__ = "Christian Schwede <info@cschwede.de>"
-name = 'containeralias'
+name = 'alias'
 entry_point = '%s.middleware:filter_factory' % (name)
 version = '0.1'
 
