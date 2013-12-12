@@ -132,5 +132,48 @@ class TestContainerAlias(unittest.TestCase):
         self.assertEquals(res.status_int, 200)
 
 
+class TestObjectAlias(unittest.TestCase):
+    def setUp(self, *_args, **_kwargs):
+        self.app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
+        self.cache = FakeCache()
+
+    def test_get_object(self):
+        req = Request.blank('/v1/a/c/o',
+                            environ={'REQUEST_METHOD': 'GET',
+                                     'swift.cache': self.cache,
+                                     'swift.object/a/c/o': {
+                                        'meta': {
+                                            'storage-path': '/v1/a2/c2/o2'}},
+                                     })
+        res = req.get_response(self.app)
+        self.assertEquals(res.environ['PATH_INFO'], '/v1/a2/c2/o2')
+        self.assertEquals(res.environ['RAW_PATH_INFO'], '/v1/a2/c2/o2')
+        self.assertEquals(res.status_int, 200)
+
+    def test_delete_object(self):
+        req = Request.blank('/v1/a/c/o',
+                            environ={'REQUEST_METHOD': 'DELETE',
+                                     'swift.cache': self.cache,
+                                     'swift.object/a/c/o': {
+                                        'meta': {
+                                            'storage-path': '/v1/a2/c2/o2'}},
+                                     })
+        res = req.get_response(self.app)
+        self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c/o')
+        self.assertEquals(res.status_int, 200)
+
+    def test_head_object(self):
+        req = Request.blank('/v1/a/c/o',
+                            environ={'REQUEST_METHOD': 'HEAD',
+                                     'swift.cache': self.cache,
+                                     'swift.object/a/c/o': {
+                                        'meta': {
+                                            'storage-path': '/v1/a2/c2/o2'}},
+                                     })
+        res = req.get_response(self.app)
+        self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c/o')
+        self.assertEquals(res.status_int, 200)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -33,7 +33,7 @@ use = egg:containeralias#containeralias
 
 from swift.common.swob import wsgify, HTTPBadRequest
 from swift.common.utils import split_path
-from swift.proxy.controllers.base import get_container_info
+from swift.proxy.controllers.base import get_container_info, get_object_info
 
 
 class ContainerAliasMiddleware(object):
@@ -54,20 +54,21 @@ class ContainerAliasMiddleware(object):
         except ValueError:
             return self.app(environ, start_response)
 
-        if container and not objname:
-            if request.method in ('DELETE', 'HEAD'):
-                return self.app
-
-            if request.method == 'POST':
-                # Deny setting if there are any objects in base container
-                # Otherwise these objects won't be visible
-                if request.headers.get('X-Container-Meta-Storage-Path'):
-                    container_info = get_container_info(request.environ, self.app)
-                    objects = container_info.get('object_count')
-                    if objects and int(objects) > 0:
-                        return HTTPBadRequest()
-
         if container:
+            if not objname:
+                # DELETE+HEAD to container itself, not the alias
+                if request.method in ('DELETE', 'HEAD'):
+                    return self.app
+
+                if request.method == 'POST':
+                    # Deny setting if there are any objects in base container
+                    # Otherwise these objects won't be visible
+                    if request.headers.get('X-Container-Meta-Storage-Path'):
+                        container_info = get_container_info(request.environ, self.app)
+                        objects = container_info.get('object_count')
+                        if objects and int(objects) > 0:
+                            return HTTPBadRequest()
+
             container_info = get_container_info(request.environ, self.app)
             meta = container_info.get('meta', {})
             storage_path = meta.get('storage-path')
@@ -76,6 +77,19 @@ class ContainerAliasMiddleware(object):
                     storage_path += '/' + objname
                 request.environ['PATH_INFO'] = storage_path
                 request.environ['RAW_PATH_INFO'] = storage_path
+
+            if objname:
+                # DELETE+HEAD will access original object, not object alias points to
+                if request.method in ('DELETE', 'HEAD'):
+                    return self.app
+
+                object_info = get_object_info(request.environ, self.app)
+                meta = object_info.get('meta', {})
+                object_storage_path = meta.get('storage-path')
+                if object_storage_path:
+                    request.environ['PATH_INFO'] = object_storage_path
+                    request.environ['RAW_PATH_INFO'] = object_storage_path
+
         return self.app
 
 
