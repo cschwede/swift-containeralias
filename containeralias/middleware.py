@@ -63,7 +63,7 @@ class ContainerAliasMiddleware(object):
                 # Deny setting if there are any objects in base container
                 # Otherwise these objects won't be visible
                 new_container_alias = request.headers.get(
-                    'X-Container-Meta-Storage-Path')
+                    'X-Container-Meta-Alias')
 
                 if new_container_alias:
                     try:
@@ -85,18 +85,18 @@ class ContainerAliasMiddleware(object):
                     container_info = get_container_info(
                         request.environ, self.app)
                     container_alias = container_info.get(
-                        'meta', {}).get('storage_path')
+                        'meta', {}).get('alias')
                     request.environ['PATH_INFO'] = old_path_info
                     if container_alias:
                         return HTTPBadRequest()
 
         if container:
             container_info = get_container_info(request.environ, self.app)
-            storage_path = container_info.get('meta', {}).get('storage_path')
-            if storage_path:
+            alias = container_info.get('meta', {}).get('alias')
+            if alias:
                 if objname:
-                    storage_path += '/' + objname
-                request.environ['PATH_INFO'] = '/%s%s' % (version, storage_path)
+                    alias += '/' + objname
+                request.environ['PATH_INFO'] = '/%s%s' % (version, alias)
         return self.app
 
 

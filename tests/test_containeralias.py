@@ -50,7 +50,7 @@ class TestContainerAlias(unittest.TestCase):
     def setUp(self, *_args, **_kwargs):
         self.app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
         self.cache = FakeCache({
-            'container/a/c': {'meta': {'storage_path': '/a2/c2'}},
+            'container/a/c': {'meta': {'alias': '/a2/c2'}},
         })
 
     def test_get_container(self):
@@ -76,7 +76,7 @@ class TestContainerAlias(unittest.TestCase):
 
         req = Request.blank('/v1/a/c',
                             environ={'REQUEST_METHOD': 'POST',
-                                     'HTTP_X_CONTAINER_META_STORAGE_PATH': '/a/c',
+                                     'HTTP_X_CONTAINER_META_ALIAS': '/a/c',
                                      'swift.cache': cache,
                                      })
         res = req.get_response(self.app)
@@ -87,7 +87,7 @@ class TestContainerAlias(unittest.TestCase):
         for alias in ['/a/c/o', '/a/', '/a', '/', 'a', 'a/c', 'a/c/o']:
             req = Request.blank('/v1/a/c',
                                 environ={'REQUEST_METHOD': 'POST',
-                                         'HTTP_X_CONTAINER_META_STORAGE_PATH': alias,
+                                         'HTTP_X_CONTAINER_META_ALIAS': alias,
                                          })
             res = req.get_response(self.app)
             self.assertEquals(res.status_int, 400)
@@ -96,7 +96,7 @@ class TestContainerAlias(unittest.TestCase):
         cache = FakeCache({'container/a/c': {'object_count': '1'}})
         req = Request.blank('/v1/a/c',
                             environ={'REQUEST_METHOD': 'POST',
-                                     'HTTP_X_CONTAINER_META_STORAGE_PATH': '/a/c',
+                                     'HTTP_X_CONTAINER_META_ALIAS': '/a/c',
                                      'swift.cache': cache,
                                      })
         res = req.get_response(self.app)
@@ -106,7 +106,7 @@ class TestContainerAlias(unittest.TestCase):
     def test_set_alias_container_alias_loop(self):
         req = Request.blank('/v1/a2/c2',
                             environ={'REQUEST_METHOD': 'POST',
-                                     'HTTP_X_CONTAINER_META_STORAGE_PATH': '/a/c',
+                                     'HTTP_X_CONTAINER_META_ALIAS': '/a/c',
                                      'swift.cache': self.cache,
                                      })
         res = req.get_response(self.app)
