@@ -56,7 +56,7 @@ class ContainerAliasMiddleware(object):
             return self.app(environ, start_response)
 
         if container and not objname:
-            if request.method == 'DELETE':
+            if request.method in ('DELETE', 'HEAD'):
                 return self.app
 
             if request.method == 'POST':

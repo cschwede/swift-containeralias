@@ -137,7 +137,7 @@ class TestContainerAlias(unittest.TestCase):
                                      'swift.cache': self.cache,
                                      })
         res = req.get_response(self.app)
-        self.assertEquals(res.environ['PATH_INFO'], '/v1/a2/c2')
+        self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
         self.assertEquals(res.status_int, 200)
 
     def test_head_object(self):
