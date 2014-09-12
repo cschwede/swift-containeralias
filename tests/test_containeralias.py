@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import json
+import mock
 import unittest
 
 from swift.common.swob import Request
@@ -42,12 +43,13 @@ class FakeApp(object):
 
     def __call__(self, env, start_response):
         start_response('200 OK', self.headers)
-        
+
         path = env.get('PATH_INFO')
         if path == '/v1/AUTH_.auth/account1/.services':
             return json.dumps({'storage': {
                 'cluster_name': 'http://localhost/v1/AUTH_123'}})
         return []
+
 
 class FakeBadApp(object):
     def __init__(self, headers=None):
@@ -115,7 +117,8 @@ class TestContainerAlias(unittest.TestCase):
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
         self.assertEquals(res.status_int, 400)
 
-    def test_container_delete(self):
+    @mock.patch.object(containeralias.ContainerAliasMiddleware, '_delete_target_containers')
+    def test_container_delete(self, dtc_mock):
         app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
         cache = FakeCache({
             'container/a/c': {'meta': {'storage-path': '/v1/a2/c2'}},
@@ -126,6 +129,8 @@ class TestContainerAlias(unittest.TestCase):
                                      'swift.cache': cache,
                                      })
         res = req.get_response(app)
+        self.assertEqual(dtc_mock.call_count, 1)
+        self.assertEqual(dtc_mock.call_args[0][3], set(['']))
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
         self.assertEquals(res.status_int, 200)
 
@@ -136,6 +141,17 @@ class TestContainerAlias(unittest.TestCase):
         res = req.get_response(app)
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a2/c2/o')
         self.assertEquals(res.status_int, 200)
+
+        dtc_mock.reset_mock()
+        cache = FakeCache({'container/a/c': {'read_acl': 'a1:u1,a1,a2:u1'}})
+        req = Request.blank('/v1/a/c', environ={'REQUEST_METHOD': 'DELETE',
+                                                'swift.cache': cache,
+                                                })
+        res = req.get_response(app)
+
+        self.assertEqual(dtc_mock.call_count, 1)
+        self.assertEqual(dtc_mock.call_args[0][3], set(['a1', 'a2']))
+        self.assertEqual(res.status_int, 200)
 
     def test_container_head(self):
         app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
@@ -151,10 +167,12 @@ class TestContainerAlias(unittest.TestCase):
         self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
         self.assertEquals(res.status_int, 200)
 
-    def test_container_post_acl(self):
+    @mock.patch.object(containeralias.ContainerAliasMiddleware, '_create_target_containers')
+    @mock.patch.object(containeralias.ContainerAliasMiddleware, '_delete_target_containers')
+    def test_container_post_acl(self, dtc_mock, ctc_mock):
         conf = {'auth_method': 'swauth'}
         app = containeralias.ContainerAliasMiddleware(FakeApp(), conf)
-        cache = FakeCache()
+        cache = FakeCache({'container/AUTH_test/container': {'read_acl': 'account1:user,account3'}})
 
         req = Request.blank('/v1/AUTH_test/container',
                             environ={'REQUEST_METHOD': 'POST',
@@ -163,6 +181,8 @@ class TestContainerAlias(unittest.TestCase):
                                      'swift.cache': cache,
                                      })
         res = req.get_response(app)
+        self.assertEqual(dtc_mock.call_args[0][3], set(['account3']))
+        self.assertEqual(ctc_mock.call_args[0][4], set(['account2']))
         self.assertEquals(res.status_int, 200)
 
 

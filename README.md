@@ -77,6 +77,17 @@ Quick Install
     #prefix = SHARED_
     #reseller_prefix = AUTH 
 
+   If you are using keystone, you must also provide the authentication credentials of the keystone admin.
+
+    [filter:containeralias]
+    use = egg:containeralias#containeralias
+    auth_method = keystone
+    keystone_admin_user = admin
+    keystone_admin_password = secret
+    keystone_admin_tenant = admin
+    keystone_admin_uri = http://localhost:35357/v2.0
+
+
 3) Alter your proxy-server.conf pipeline and add containeralias after your
    authentication middleware.
 
