@@ -1,5 +1,4 @@
 # Copyright (c) 2013 Christian Schwede <info@cschwede.de>
-# Copyright (c) 2014 Christopher Bartz <bartz@dkrz.de>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,7 +40,10 @@ auth_method = swauth
 import json
 from urlparse import urlparse
 
-from keystoneclient.v2_0 import client as keystone
+try:
+    from keystoneclient.v2_0 import client as keystone
+except ImportError:
+    keystone = None
 from swift.common.swob import wsgify, HTTPBadRequest
 from swift.common.utils import get_logger, split_path
 from swift.proxy.controllers.base import get_container_info

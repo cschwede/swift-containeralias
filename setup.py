@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-__author__ = "Christian Schwede <info@cschwede.de>, Christopher Bartz <bartz@dkrz.de>"
+__author__ = "Christian Schwede <info@cschwede.de>"
 name = 'containeralias'
 entry_point = '%s.middleware:filter_factory' % (name)
 version = '0.2'
@@ -11,8 +11,8 @@ setup(
     version=version,
     description='Openstack Swift container alias',
     license='Apache License (2.0)',
-    author='Christian Schwede, Christopher Bartz',
-    author_email='info@cschwede.de, bartz@dkrz.de',
+    author='Christian Schwede',
+    author_email='info@cschwede.de',
     url='https://github.com/cschwede/swift-%s' % (name),
     packages=find_packages(),
     test_suite='nose.collector',
@@ -22,7 +22,7 @@ setup(
         'Operating System :: POSIX :: Linux',
         'Programming Language :: Python :: 2.6',
         'Environment :: No Input/Output (Daemon)'],
-    install_requires=['swift', 'python-keystoneclient'],
+    install_requires=['swift'],
     entry_points={
         'paste.filter_factory': ['%s=%s' % (name, entry_point)]
     },
