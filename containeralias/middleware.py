@@ -235,7 +235,8 @@ class ContainerAliasMiddleware(object):
                 # check also that the original account is allowed to access the
                 # target container
 
-                if '.wsgi.tempurl' in user_groups:
+                if ('.wsgi.pre_authed' in user_groups
+                        or '.wsgi.tempurl' in user_groups):
                     user_groups = [account.replace(self.reseller_prefix, ''), ]
 
                 allowed = False

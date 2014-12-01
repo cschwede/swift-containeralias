@@ -99,22 +99,23 @@ class TestContainerAlias(unittest.TestCase):
             'container/a2/c2': {'read_acl': 'a1', 'write_acl': 'a1'},
         })
 
-        for method in ['GET', 'PUT', 'POST', 'COPY']:
-            # DELETE and HEAD are not redirected on container level
-            req = Request.blank('/v1/AUTH_a1/c',
-                                environ={'REQUEST_METHOD': method,
-                                         'swift.cache': cache,
-                                         'REMOTE_USER': '.wsgi.tempurl'})
-            res = req.get_response(app)
-            self.assertEqual(res.status_int, 200)
+        for user in ['.wsgi.pre_authed', '.wsgi.tempurl']:
+            for method in ['GET', 'PUT', 'POST', 'COPY']:
+                # DELETE and HEAD are not redirected on container level
+                req = Request.blank('/v1/AUTH_a1/c',
+                                    environ={'REQUEST_METHOD': method,
+                                             'swift.cache': cache,
+                                             'REMOTE_USER': user})
+                res = req.get_response(app)
+                self.assertEqual(res.status_int, 200)
 
-        for method in ['HEAD', 'DELETE']:
-            req = Request.blank('/v1/AUTH_a1/c/o',
-                                environ={'REQUEST_METHOD': method,
-                                         'swift.cache': cache,
-                                         'REMOTE_USER': '.wsgi.tempurl'})
-            res = req.get_response(app)
-            self.assertEqual(res.status_int, 200)
+            for method in ['HEAD', 'DELETE']:
+                req = Request.blank('/v1/AUTH_a1/c/o',
+                                    environ={'REQUEST_METHOD': method,
+                                             'swift.cache': cache,
+                                             'REMOTE_USER': user})
+                res = req.get_response(app)
+                self.assertEqual(res.status_int, 200)
 
     def test_redirect(self):
         app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
