@@ -33,7 +33,7 @@ pipeline = catch_errors cache tempauth containeralias proxy-server
 use = egg:containeralias#containeralias
 auth_method = swauth
 #prefix = SHARED_
-#reseller_prefix = AUTH 
+#reseller_prefix = AUTH
 
 """
 
@@ -46,12 +46,12 @@ except ImportError:
     keystone = None
 from swift.common.swob import wsgify, HTTPBadRequest
 from swift.common.utils import get_logger, split_path
-from swift.proxy.controllers.base import get_container_info
 from swift.common.wsgi import make_pre_authed_request
+from swift.proxy.controllers.base import get_container_info
 
 
 class ContainerAliasMiddleware(object):
-    """ Containeralias middleware
+    """Containeralias middleware
 
     See above for a full description.
 
@@ -114,9 +114,11 @@ class ContainerAliasMiddleware(object):
 
         return storage_path
 
-    def _create_target_containers(self, request, container_path, account_name, container, target_accounts):
+    def _create_target_containers(self, request, container_path,
+                                  account_name, container, target_accounts):
         for target_account in target_accounts:
-            target_storage_path = self._get_storage_path(request, target_account)
+            target_storage_path = self._get_storage_path(
+                request, target_account)
 
             if not target_storage_path or account_name == target_account:
                 continue
@@ -130,9 +132,11 @@ class ContainerAliasMiddleware(object):
 
             req.get_response(self.app)
 
-    def _delete_target_containers(self, request, account_name, container, target_accounts):
+    def _delete_target_containers(self, request, account_name,
+                                  container, target_accounts):
         for target_account in target_accounts:
-            target_storage_path = self._get_storage_path(request, target_account)
+            target_storage_path = self._get_storage_path(
+                request, target_account)
 
             if not target_storage_path or account_name == target_account:
                 continue
@@ -147,7 +151,8 @@ class ContainerAliasMiddleware(object):
     @wsgify
     def __call__(self, request):
         try:
-            (version, account, container, objname) = split_path(request.path_info, 1, 4, True)
+            (version, account, container, objname) = split_path(
+                request.path_info, 1, 4, True)
         except ValueError:
             return self.app
 
@@ -171,7 +176,8 @@ class ContainerAliasMiddleware(object):
                 for u in read_acl.split(','):
                     target_accounts.add(u.split(':')[0])
 
-                self._delete_target_containers(request, account_name, container, target_accounts)
+                self._delete_target_containers(
+                    request, account_name, container, target_accounts)
 
                 return self.app
 
@@ -188,17 +194,20 @@ class ContainerAliasMiddleware(object):
                 old_read_acl = container_info.get('read_acl') or ''
                 new_read_acl = request.environ.get('HTTP_X_CONTAINER_READ', '')
 
-                old_accounts = set([t.split(':')[0] for t in old_read_acl.split(',')])
-                new_accounts = set([t.split(':')[0] for t in new_read_acl.split(',')])
- 
+                old_accounts = set(
+                    [t.split(':')[0] for t in old_read_acl.split(',')])
+                new_accounts = set(
+                    [t.split(':')[0] for t in new_read_acl.split(',')])
+
                 # Delete target containers, if no read_acl does anymore exist.
-                self._delete_target_containers(request, account_name, container,
-                                               old_accounts - new_accounts)
+                self._delete_target_containers(request, account_name,
+                                               container, old_accounts -
+                                               new_accounts)
 
                 # Create new target containers.
                 container_path = "/%s/%s/%s" % (version, account, container)
                 self._create_target_containers(request, container_path,
-                                               account_name, container, 
+                                               account_name, container,
                                                new_accounts - old_accounts)
 
         if container:

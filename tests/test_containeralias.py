@@ -80,18 +80,18 @@ class TestContainerAlias(unittest.TestCase):
                                      'swift.cache': cache,
                                      })
         res = req.get_response(app)
-        self.assertEquals(res.environ['PATH_INFO'], '/v1/a2/c2')
-        self.assertEquals(res.environ['RAW_PATH_INFO'], '/v1/a2/c2')
-        self.assertEquals(res.status_int, 200)
+        self.assertEqual(res.environ['PATH_INFO'], '/v1/a2/c2')
+        self.assertEqual(res.environ['RAW_PATH_INFO'], '/v1/a2/c2')
+        self.assertEqual(res.status_int, 200)
 
         req = Request.blank('/v1/a/c/o',
                             environ={'REQUEST_METHOD': 'GET',
                                      'swift.cache': cache,
                                      })
         res = req.get_response(app)
-        self.assertEquals(res.environ['PATH_INFO'], '/v1/a2/c2/o')
-        self.assertEquals(res.environ['RAW_PATH_INFO'], '/v1/a2/c2/o')
-        self.assertEquals(res.status_int, 200)
+        self.assertEqual(res.environ['PATH_INFO'], '/v1/a2/c2/o')
+        self.assertEqual(res.environ['RAW_PATH_INFO'], '/v1/a2/c2/o')
+        self.assertEqual(res.status_int, 200)
 
     def test_container_post(self):
         app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
@@ -103,8 +103,8 @@ class TestContainerAlias(unittest.TestCase):
                                      'swift.cache': cache,
                                      })
         res = req.get_response(app)
-        self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
-        self.assertEquals(res.status_int, 200)
+        self.assertEqual(res.environ['PATH_INFO'], '/v1/a/c')
+        self.assertEqual(res.status_int, 200)
 
         cache = FakeCache({'container/a/c': {'object_count': '1'}})
         app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
@@ -114,10 +114,11 @@ class TestContainerAlias(unittest.TestCase):
                                      'swift.cache': cache,
                                      })
         res = req.get_response(app)
-        self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
-        self.assertEquals(res.status_int, 400)
+        self.assertEqual(res.environ['PATH_INFO'], '/v1/a/c')
+        self.assertEqual(res.status_int, 400)
 
-    @mock.patch.object(containeralias.ContainerAliasMiddleware, '_delete_target_containers')
+    @mock.patch.object(containeralias.ContainerAliasMiddleware,
+                       '_delete_target_containers')
     def test_container_delete(self, dtc_mock):
         app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
         cache = FakeCache({
@@ -131,16 +132,16 @@ class TestContainerAlias(unittest.TestCase):
         res = req.get_response(app)
         self.assertEqual(dtc_mock.call_count, 1)
         self.assertEqual(dtc_mock.call_args[0][3], set(['']))
-        self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
-        self.assertEquals(res.status_int, 200)
+        self.assertEqual(res.environ['PATH_INFO'], '/v1/a/c')
+        self.assertEqual(res.status_int, 200)
 
         req = Request.blank('/v1/a/c/o',
                             environ={'REQUEST_METHOD': 'DELETE',
                                      'swift.cache': cache,
                                      })
         res = req.get_response(app)
-        self.assertEquals(res.environ['PATH_INFO'], '/v1/a2/c2/o')
-        self.assertEquals(res.status_int, 200)
+        self.assertEqual(res.environ['PATH_INFO'], '/v1/a2/c2/o')
+        self.assertEqual(res.status_int, 200)
 
         dtc_mock.reset_mock()
         cache = FakeCache({'container/a/c': {'read_acl': 'a1:u1,a1,a2:u1'}})
@@ -164,26 +165,30 @@ class TestContainerAlias(unittest.TestCase):
                                      'swift.cache': cache,
                                      })
         res = req.get_response(app)
-        self.assertEquals(res.environ['PATH_INFO'], '/v1/a/c')
-        self.assertEquals(res.status_int, 200)
+        self.assertEqual(res.environ['PATH_INFO'], '/v1/a/c')
+        self.assertEqual(res.status_int, 200)
 
-    @mock.patch.object(containeralias.ContainerAliasMiddleware, '_create_target_containers')
-    @mock.patch.object(containeralias.ContainerAliasMiddleware, '_delete_target_containers')
+    @mock.patch.object(
+        containeralias.ContainerAliasMiddleware, '_create_target_containers')
+    @mock.patch.object(
+        containeralias.ContainerAliasMiddleware, '_delete_target_containers')
     def test_container_post_acl(self, dtc_mock, ctc_mock):
         conf = {'auth_method': 'swauth'}
         app = containeralias.ContainerAliasMiddleware(FakeApp(), conf)
-        cache = FakeCache({'container/AUTH_test/container': {'read_acl': 'account1:user,account3'}})
+        cache = FakeCache({'container/AUTH_test/container': {
+            'read_acl': 'account1:user,account3'}})
 
         req = Request.blank('/v1/AUTH_test/container',
                             environ={'REQUEST_METHOD': 'POST',
-                                     'HTTP_X_CONTAINER_READ': 'account1,account2:user',
+                                     'HTTP_X_CONTAINER_READ':
+                                     'account1,account2:user',
                                      'REMOTE_USER': 'account:user,account',
                                      'swift.cache': cache,
                                      })
         res = req.get_response(app)
         self.assertEqual(dtc_mock.call_args[0][3], set(['account3']))
         self.assertEqual(ctc_mock.call_args[0][4], set(['account2']))
-        self.assertEquals(res.status_int, 200)
+        self.assertEqual(res.status_int, 200)
 
 
 if __name__ == '__main__':
