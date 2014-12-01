@@ -44,7 +44,8 @@ try:
     from keystoneclient.v2_0 import client as keystone
 except ImportError:
     keystone = None
-from swift.common.swob import wsgify, HTTPBadRequest
+from swift.common.middleware.acl import parse_acl
+from swift.common.swob import wsgify, HTTPBadRequest, HTTPForbidden
 from swift.common.utils import get_logger, split_path
 from swift.common.wsgi import make_pre_authed_request
 from swift.proxy.controllers.base import get_container_info
@@ -219,6 +220,25 @@ class ContainerAliasMiddleware(object):
                     storage_path += '/' + objname
                 request.environ['PATH_INFO'] = storage_path
                 request.environ['RAW_PATH_INFO'] = storage_path
+
+                # Check if user is allowed to access the target container
+                # Required because other middlewares might not check this,
+                # for example formpost
+                container_info = get_container_info(request.environ, self.app)
+                user_groups = (request.remote_user or '').split(',')
+
+                allowed = False
+
+                if request.method in ['PUT', 'POST', 'COPY', 'DELETE']:
+                    _, acl_groups = parse_acl(container_info.get('write_acl'))
+                    allowed = set(acl_groups) & set(user_groups)
+
+                if request.method in ['GET', 'HEAD']:
+                    _, acl_groups = parse_acl(container_info.get('read_acl'))
+                    allowed = set(acl_groups) & set(user_groups)
+
+                if not allowed:
+                    return HTTPForbidden()
         return self.app
 
 

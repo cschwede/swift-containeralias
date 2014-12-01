@@ -69,15 +69,40 @@ def start_response(*args):
 
 class TestContainerAlias(unittest.TestCase):
 
-    def test_redirect(self):
+    def test_acl_check(self):
         app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
         cache = FakeCache({
             'container/a/c': {'meta': {'storage-path': '/v1/a2/c2'}},
         })
 
+        for method in ['GET', 'PUT', 'POST', 'COPY']:
+            # DELETE and HEAD are not redirected on container level
+            req = Request.blank('/v1/a/c',
+                                environ={'REQUEST_METHOD': method,
+                                         'swift.cache': cache,
+                                         'REMOTE_USER': 'a1:u1'})
+            res = req.get_response(app)
+            self.assertEqual(res.status_int, 403)
+
+        for method in ['HEAD', 'DELETE']:
+            req = Request.blank('/v1/a/c/o',
+                                environ={'REQUEST_METHOD': method,
+                                         'swift.cache': cache,
+                                         'REMOTE_USER': 'a1:u1'})
+            res = req.get_response(app)
+            self.assertEqual(res.status_int, 403)
+
+    def test_redirect(self):
+        app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
+        cache = FakeCache({
+            'container/a/c': {'meta': {'storage-path': '/v1/a2/c2'}},
+            'container/a2/c2': {'read_acl': 'a1:u1'},
+        })
+
         req = Request.blank('/v1/a/c',
                             environ={'REQUEST_METHOD': 'GET',
                                      'swift.cache': cache,
+                                     'REMOTE_USER': 'a1:u1',
                                      })
         res = req.get_response(app)
         self.assertEqual(res.environ['PATH_INFO'], '/v1/a2/c2')
@@ -87,6 +112,7 @@ class TestContainerAlias(unittest.TestCase):
         req = Request.blank('/v1/a/c/o',
                             environ={'REQUEST_METHOD': 'GET',
                                      'swift.cache': cache,
+                                     'REMOTE_USER': 'a1:u1',
                                      })
         res = req.get_response(app)
         self.assertEqual(res.environ['PATH_INFO'], '/v1/a2/c2/o')
@@ -123,11 +149,13 @@ class TestContainerAlias(unittest.TestCase):
         app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
         cache = FakeCache({
             'container/a/c': {'meta': {'storage-path': '/v1/a2/c2'}},
+            'container/a2/c2': {'write_acl': 'a1:u1'},
         })
 
         req = Request.blank('/v1/a/c',
                             environ={'REQUEST_METHOD': 'DELETE',
                                      'swift.cache': cache,
+                                     'REMOTE_USER': 'a1:u1',
                                      })
         res = req.get_response(app)
         self.assertEqual(dtc_mock.call_count, 1)
@@ -138,6 +166,7 @@ class TestContainerAlias(unittest.TestCase):
         req = Request.blank('/v1/a/c/o',
                             environ={'REQUEST_METHOD': 'DELETE',
                                      'swift.cache': cache,
+                                     'REMOTE_USER': 'a1:u1',
                                      })
         res = req.get_response(app)
         self.assertEqual(res.environ['PATH_INFO'], '/v1/a2/c2/o')
