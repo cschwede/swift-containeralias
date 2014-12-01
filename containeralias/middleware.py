@@ -227,6 +227,15 @@ class ContainerAliasMiddleware(object):
                 container_info = get_container_info(request.environ, self.app)
                 user_groups = (request.remote_user or '').split(',')
 
+                # User is set to .wsgi.tempurl if the request was authenticated
+                # using tempurl/formpost. In this case we know that the request
+                # is authenticated for the original account. Now we need to
+                # check also that the original account is allowed to access the
+                # target container
+
+                if '.wsgi.tempurl' in user_groups:
+                    user_groups = [account, ]
+
                 allowed = False
 
                 if request.method in ['PUT', 'POST', 'COPY', 'DELETE']:

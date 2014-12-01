@@ -92,6 +92,30 @@ class TestContainerAlias(unittest.TestCase):
             res = req.get_response(app)
             self.assertEqual(res.status_int, 403)
 
+    def test_acl_check_tempurl(self):
+        app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
+        cache = FakeCache({
+            'container/a1/c': {'meta': {'storage-path': '/v1/a2/c2'}},
+            'container/a2/c2': {'read_acl': 'a1', 'write_acl': 'a1'},
+        })
+
+        for method in ['GET', 'PUT', 'POST', 'COPY']:
+            # DELETE and HEAD are not redirected on container level
+            req = Request.blank('/v1/a/c',
+                                environ={'REQUEST_METHOD': method,
+                                         'swift.cache': cache,
+                                         'REMOTE_USER': '.wsgi.tempurl'})
+            res = req.get_response(app)
+            self.assertEqual(res.status_int, 200)
+
+        for method in ['HEAD', 'DELETE']:
+            req = Request.blank('/v1/a/c/o',
+                                environ={'REQUEST_METHOD': method,
+                                         'swift.cache': cache,
+                                         'REMOTE_USER': '.wsgi.tempurl'})
+            res = req.get_response(app)
+            self.assertEqual(res.status_int, 200)
+
     def test_redirect(self):
         app = containeralias.ContainerAliasMiddleware(FakeApp(), {})
         cache = FakeCache({
