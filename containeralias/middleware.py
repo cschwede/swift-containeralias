@@ -63,6 +63,8 @@ class ContainerAliasMiddleware(object):
         self.prefix = conf.get('prefix', 'SHARED_')
         self.auth_method = conf.get('auth_method', 'tempauth')
         self.reseller_prefix = conf.get('reseller_prefix', 'AUTH')
+        if self.reseller_prefix and self.reseller_prefix[-1] != '_':
+            self.reseller_prefix += '_'
         self.logger = get_logger(conf)
         if self.auth_method == 'keystone':
             if keystone:
@@ -234,7 +236,7 @@ class ContainerAliasMiddleware(object):
                 # target container
 
                 if '.wsgi.tempurl' in user_groups:
-                    user_groups = [account, ]
+                    user_groups = [account.replace(self.reseller_prefix, ''), ]
 
                 allowed = False
 
