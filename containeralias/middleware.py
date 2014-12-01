@@ -63,11 +63,17 @@ class ContainerAliasMiddleware(object):
         self.auth_method = conf.get('auth_method', 'tempauth')
         self.reseller_prefix = conf.get('reseller_prefix', 'AUTH')
         self.logger = get_logger(conf)
-        self.kclient = keystone.Client(username=conf.get('keystone_admin_user', 'admin'),
-                                       password=conf.get('keystone_admin_password'),
-                                       tenant_name=conf.get('keystone_admin_tenant', 'admin'),
-                                       auth_url=conf.get('keystone_admin_uri')
-                                       ) if self.auth_method == 'keystone' else None
+        if self.auth_method == 'keystone':
+            if keystone:
+                self.kclient = keystone.Client(
+                    username=conf.get('keystone_admin_user', 'admin'),
+                    password=conf.get('keystone_admin_password'),
+                    tenant_name=conf.get('keystone_admin_tenant', 'admin'),
+                    auth_url=conf.get('keystone_admin_uri'))
+            else:
+                self.logger.error(
+                    "Keystone authentication requested, "
+                    "but python-keystoneclient module not found")
 
     def _swauth_lookup(self, request, account):
         storage_url = None
